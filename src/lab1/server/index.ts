@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import generateRandomOne from './generateRandomOne';
 import generateRandomTwo from './generateRandomTwo';
+import generateRandomThree from './generateRandomThree';
+
+const metricPartsCount = 4;
+const metricPartLength = 1 / metricPartsCount;
 
 const app = express();
 
@@ -67,7 +71,7 @@ app.get('/three', (req, res) => {
   const n = 10000;
 
   for (let i = 0; i < n; i++) {
-    numbers.push(generateRandomTwo(1, 1));
+    numbers.push(generateRandomThree());
   }
 
   const countTable: { [key: number]: number } = {};
