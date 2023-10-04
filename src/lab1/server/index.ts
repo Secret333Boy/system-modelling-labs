@@ -1,96 +1,67 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import generateRandomOne from './generateRandomOne';
 import generateRandomTwo from './generateRandomTwo';
 import generateRandomThree from './generateRandomThree';
 
-const metricPartsCount = 4;
-const metricPartLength = 1 / metricPartsCount;
+const k = 20;
 
 const app = express();
 
 app.use(cors());
 
-app.get('/one', (req, res) => {
-  const numbers: number[] = [];
+const testGenerator =
+  (generate: () => number) => (req: Request, res: Response) => {
+    const numbers: number[] = [];
 
-  const n = 10000;
+    const n = 10000;
 
-  for (let i = 0; i < n; i++) {
-    numbers.push(generateRandomOne(1));
-  }
+    for (let i = 0; i < n; i++) {
+      numbers.push(generate());
+    }
 
-  const countTable: { [key: number]: number } = {};
+    const max = Math.max(...numbers);
+    const min = Math.min(...numbers);
 
-  for (const number of numbers) {
-    const index = Math.round(number);
+    const h = (max - min) / k;
 
-    countTable[index] = (countTable[index] || 0) + 1;
-  }
+    const countTable: { [key: number]: number } = {};
 
-  const freqTable = Object.entries(countTable)
-    .map((item) => ({
-      x: +item[0],
-      y: item[1] / n,
-    }))
-    .sort((a, b) => a.x - b.x);
+    const i0 = min;
+    const iend = max;
 
-  res.json(freqTable);
-});
+    // eslint-disable-next-line for-direction
+    for (let i = i0; i < iend; i += h) {
+      const index = i + h / 2;
+      countTable[index] = numbers.filter(
+        (num) => num >= i && num <= i + h
+      ).length;
+    }
 
-app.get('/two', (req, res) => {
-  const numbers: number[] = [];
+    const freqTable = Object.entries(countTable)
+      .map((item) => ({
+        x: +item[0],
+        y: item[1],
+      }))
+      .sort((a, b) => a.x - b.x);
 
-  const n = 10000;
+    res.json(freqTable);
+  };
 
-  for (let i = 0; i < n; i++) {
-    numbers.push(generateRandomTwo(1, 1));
-  }
+app.get(
+  '/one',
+  testGenerator(() => generateRandomOne(1))
+);
 
-  const countTable: { [key: number]: number } = {};
+app.get(
+  '/two',
+  testGenerator(() => generateRandomTwo(1, 1))
+);
 
-  for (const number of numbers) {
-    const index = Math.round(number);
-
-    countTable[index] = (countTable[index] || 0) + 1;
-  }
-
-  const freqTable = Object.entries(countTable)
-    .map((item) => ({
-      x: +item[0],
-      y: item[1] / n,
-    }))
-    .sort((a, b) => a.x - b.x);
-
-  res.json(freqTable);
-});
-
-app.get('/three', (req, res) => {
-  const numbers: number[] = [];
-
-  const n = 10000;
-
-  for (let i = 0; i < n; i++) {
-    numbers.push(generateRandomThree());
-  }
-
-  const countTable: { [key: number]: number } = {};
-
-  for (const number of numbers) {
-    const index = Math.round(number);
-
-    countTable[index] = (countTable[index] || 0) + 1;
-  }
-
-  const freqTable = Object.entries(countTable)
-    .map((item) => ({
-      x: +item[0],
-      y: item[1] / n,
-    }))
-    .sort((a, b) => a.x - b.x);
-
-  res.json(freqTable);
-});
+app.get(
+  '/three',
+  testGenerator(() => generateRandomThree())
+);
 
 app.listen(5000, () => {
   console.log('server started');
