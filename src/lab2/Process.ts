@@ -6,6 +6,8 @@ export default class Process extends Element {
   private maxQueueLength = Number.MAX_VALUE;
   private fails = 0;
   private meanQueue = 0;
+  private meanBusyResources = 0;
+  private resourcesCount = 1;
 
   constructor(delay: number) {
     super('process' + Element.nextId, Distribution.STATIC, delay);
@@ -14,8 +16,8 @@ export default class Process extends Element {
   public inAction() {
     super.inAction();
 
-    if (this.state === 0) {
-      this.state = 1;
+    if (this.state !== this.resourcesCount) {
+      this.state++;
       this.setNextT(this.getCurrentT() + this.getDelay());
       return;
     }
@@ -29,21 +31,30 @@ export default class Process extends Element {
   }
 
   public outAction() {
-    super.outAction();
+    const nextElement = super.getNextElement();
 
-    if (this.queue === 0) {
-      this.setNextT(Infinity);
-      this.state = 0;
-      return;
+    this.quantity += this.state;
+
+    for (let i = 0; i < this.state; i++) {
+      nextElement?.inAction();
     }
 
-    this.queue--;
-    this.state = 1;
-    this.setNextT(this.getCurrentT() + this.getDelay());
+    this.setNextT(Infinity);
+    this.state = 0;
+
+    if (this.queue > 0) {
+      while (this.state < this.resourcesCount && this.queue > 0) {
+        this.queue--;
+        this.state++;
+      }
+
+      this.setNextT(this.getCurrentT() + this.getDelay());
+    }
   }
 
   public doStatistics(delta: number) {
     this.meanQueue += this.queue * delta;
+    this.meanBusyResources += this.state * delta;
   }
 
   public getQueue() {
@@ -54,7 +65,24 @@ export default class Process extends Element {
     return this.meanQueue;
   }
 
+  public getMeanBusyResources() {
+    return this.meanBusyResources;
+  }
+
   public setMaxQueueLength(length: number) {
     this.maxQueueLength = length;
+  }
+
+  public setResourcesCount(resourcesCount: number) {
+    this.resourcesCount = resourcesCount;
+  }
+
+  public getFails() {
+    return this.fails;
+  }
+
+  public printInfo() {
+    super.printInfo();
+    console.log('fails = ' + this.fails);
   }
 }

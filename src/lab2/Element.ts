@@ -9,10 +9,10 @@ export default abstract class Element {
   private nextElements: { element: Element; possibility: number }[] = [];
   private nextT: number = 0;
   private currentT: number = 0;
-  public readonly distribution: Distribution;
+  private distribution: Distribution;
   public readonly delayMean: number;
   public readonly delayVariance: number;
-  private quantity: number = 0;
+  protected quantity: number = 0;
   protected state: number = 0;
 
   constructor(
@@ -36,7 +36,9 @@ export default abstract class Element {
           this.delayMean
         );
       case Distribution.EXPONENTIAL:
-        return CustomRandom.generateExp(1 / this.delayMean);
+        return CustomRandom.generateExponential(1 / this.delayMean);
+      case Distribution.UNIFORM:
+        return CustomRandom.generateUniform() * 2 * this.delayMean;
       case Distribution.STATIC:
       default:
         return this.delayMean;
@@ -93,4 +95,24 @@ export default abstract class Element {
   }
 
   public doStatistics(delta: number) {}
+
+  public printResult() {
+    console.log(this.name + ' quantity = ' + this.quantity + '\n');
+  }
+
+  public printInfo() {
+    console.log(
+      this.name +
+        ' state= ' +
+        this.state +
+        ' quantity = ' +
+        this.quantity +
+        ' tnext= ' +
+        this.nextT
+    );
+  }
+
+  public setDistribution(distribution: Distribution) {
+    this.distribution = distribution;
+  }
 }

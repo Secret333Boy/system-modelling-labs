@@ -1,4 +1,5 @@
 import Element from './Element';
+import Process from './Process';
 
 export default class Model {
   private elements: Element[] = [];
@@ -45,10 +46,26 @@ export default class Model {
   }
 
   public printInfo() {
-    // todo
+    for (const element of this.elements) {
+      element.printInfo();
+    }
   }
 
   public printResult() {
-    // todo
+    console.log('\n-------------RESULTS-------------');
+    for (const element of this.elements) {
+      element.printResult();
+      if (element instanceof Process) {
+        console.log(
+          `mean length of queue = ${
+            element.getMeanQueue() / this.currentT
+          }\nmean resources busy = ${
+            element.getMeanBusyResources() / this.currentT
+          }\nfailure probability = ${
+            element.getFails() / (element.getQuantity() + element.getFails())
+          }\n`
+        );
+      }
+    }
   }
 }
