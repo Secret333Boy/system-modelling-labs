@@ -7,7 +7,7 @@ import gauss from './gauss';
 import exponential from './exponential';
 import exponentialSegment from './exponentialSegment';
 
-const k = 20;
+const k = 100;
 
 const app = express();
 
@@ -51,6 +51,8 @@ const testGenerator =
 
     let X2 = 0;
     let X2k = 0;
+    let M = 0;
+    let M2 = 0;
 
     console.table(
       freqTable.map(({ x, y }) => {
@@ -61,11 +63,16 @@ const testGenerator =
         X2 += X2part;
         if (y >= 5) X2k++;
 
+        const freq = y / n;
+
+        M += x * freq;
+        M2 += x * x * freq;
+
         return { x, yGot: y, yExpected, diff: Math.abs(yExpected - y), X2part };
       })
     );
 
-    console.log(`X2 (k=${X2k}) = ${X2}`);
+    console.log(`M=${M}\nD=${M2 - M * M}\nX2 (k=${X2k}) = ${X2}`);
 
     res.json(freqTable);
   };

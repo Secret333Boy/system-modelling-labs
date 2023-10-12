@@ -10,7 +10,10 @@ const p3 = new Process(2);
 
 create.setNextElements([{ element: p1, possibility: 1 }]);
 p1.setNextElements([{ element: p2, possibility: 1 }]);
-p2.setNextElements([{ element: p3, possibility: 1 }]);
+p2.setNextElements([
+  { element: p3, possibility: 1 },
+  // { element: p1, possibility: 0.2 },
+]);
 
 p1.setMaxQueueLength(0);
 p2.setMaxQueueLength(8);
