@@ -6,7 +6,7 @@ export default abstract class Element {
 
   public readonly id: number;
   public readonly name: string;
-  private nextElements: { element: Element; possibility: number }[] = [];
+  private nextElements: { element: Element; probability: number }[] = [];
   private nextT: number = 0;
   private currentT: number = 0;
   private distribution: Distribution;
@@ -56,9 +56,9 @@ export default abstract class Element {
   }
 
   public setNextElements(
-    elements: { element: Element; possibility: number }[]
+    elements: { element: Element; probability: number }[]
   ) {
-    if (elements.reduce((acc, el) => acc + el.possibility, 0) !== 1)
+    if (elements.reduce((acc, el) => acc + el.probability, 0) !== 1)
       throw new Error('Sum of possibilities should equal 1');
 
     this.nextElements = elements;
@@ -69,8 +69,8 @@ export default abstract class Element {
 
     let sum = 0;
 
-    for (const { element, possibility } of this.nextElements) {
-      sum += possibility;
+    for (const { element, probability } of this.nextElements) {
+      sum += probability;
 
       if (rand < sum) return element;
     }
