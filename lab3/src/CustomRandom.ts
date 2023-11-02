@@ -14,4 +14,14 @@ export default class CustomRandom {
   public static generateUniform() {
     return generateRandomThree();
   }
+
+  public static generateErlang(a: number, k: number) {
+    let multEps = 1;
+
+    for (let i = 0; i < k; i++) {
+      multEps *= Math.random();
+    }
+
+    return -Math.log(multEps) / (k * a);
+  }
 }

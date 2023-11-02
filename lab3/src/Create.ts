@@ -5,7 +5,7 @@ import ModelObject from './ModelObject';
 export default class Create<T extends ModelObject> extends Element<T> {
   constructor(
     delay: number,
-    private readonly createObject = () => new ModelObject() as T
+    private readonly createObject = (t: number) => new ModelObject() as T
   ) {
     super('create', Distribution.STATIC, delay);
   }
@@ -15,7 +15,7 @@ export default class Create<T extends ModelObject> extends Element<T> {
   }
 
   public outAction() {
-    const newObj = this.createObject();
+    const newObj = this.createObject(this.getCurrentT());
 
     super.outAction();
     super.setNextT(super.getCurrentT() + super.getDelay(newObj));

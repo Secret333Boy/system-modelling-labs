@@ -10,13 +10,13 @@ export default class Process<T extends ModelObject> extends Element<T> {
   constructor(
     name: string,
     delayFunc: (obj: T) => number,
-    modifyObj?: (obj: T) => T
+    modifyObj?: (obj: T, t: number) => T
   );
   constructor(name: string, delay: number, modifyObj?: (obj: T) => T);
   constructor(
     name: string,
     delay?: number | ((obj: T) => number),
-    private readonly modifyObj: (obj: T) => T = (obj) => obj
+    private readonly modifyObj: (obj: T, t: number) => T = (obj) => obj
   ) {
     const isDelayFunction = typeof delay === 'function';
 
@@ -42,7 +42,10 @@ export default class Process<T extends ModelObject> extends Element<T> {
     if (!this.currentObject)
       throw new Error('Tried to perform outAction on unbusy process');
 
-    const modifiedObject = this.modifyObj(this.currentObject);
+    const modifiedObject = this.modifyObj(
+      this.currentObject,
+      this.getCurrentT()
+    );
 
     const nextElement = this.getNextElement(modifiedObject);
 

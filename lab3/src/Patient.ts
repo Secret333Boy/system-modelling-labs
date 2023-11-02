@@ -7,7 +7,10 @@ export enum PatientType {
 }
 
 export default class Patient extends ModelObject {
-  constructor(public type: PatientType) {
+  constructor(
+    public type: PatientType,
+    public readonly enterT: number
+  ) {
     super();
   }
 }

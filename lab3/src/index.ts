@@ -1,5 +1,7 @@
+import BankClient from './BankClient';
 import BlockingElement from './BlockingElement';
 import Create from './Create';
+import CustomRandom from './CustomRandom';
 import Distribution from './Distribution';
 import Model from './Model';
 import Patient, { PatientType } from './Patient';
@@ -65,40 +67,57 @@ const runTask2Min = () => {
 };
 
 const runTask2 = () => {
-  const create = new Create(0.5);
+  const create = new Create(0.5, (t) => new BankClient(t));
   create.setDistribution(Distribution.EXPONENTIAL);
 
-  const p1 = new Process('p1', 0.3);
+  const outputIntervals: number[] = [];
+  const meanGeneralProcessingIntervals: number[] = [];
+  let prevOutputT = 0;
+
+  const p1 = new Process<BankClient>('p1', 0.3, (obj) => {
+    if (prevOutputT) outputIntervals.push(p1.getCurrentT() - prevOutputT);
+    prevOutputT = p1.getCurrentT();
+
+    meanGeneralProcessingIntervals.push(p1.getCurrentT() - obj.bankEnterT);
+    return obj;
+  });
   p1.setDistribution(Distribution.EXPONENTIAL);
 
-  const p2 = new Process('p2', 0.3);
+  const p2 = new Process<BankClient>('p2', 0.3, (obj) => {
+    if (prevOutputT) outputIntervals.push(p2.getCurrentT() - prevOutputT);
+    prevOutputT = p2.getCurrentT();
+
+    meanGeneralProcessingIntervals.push(p2.getCurrentT() - obj.bankEnterT);
+
+    return obj;
+  });
   p2.setDistribution(Distribution.EXPONENTIAL);
 
-  const qStart = new Queue('qStart');
-  const q1 = new Queue('q1', 2);
-  const q2 = new Queue('q2', 2);
-  const q3 = new Queue('q3', 1);
-  const q4 = new Queue('q4', 1);
+  const qStart = new Queue<BankClient>('qStart');
+  const q1 = new Queue<BankClient>('q1');
+  const q2 = new Queue<BankClient>('q2');
+  const q3 = new Queue<BankClient>('q3', 1);
+  const q4 = new Queue<BankClient>('q4', 1);
 
-  const b1 = new BlockingElement(
+  const b1 = new BlockingElement<BankClient>(
     'b1',
     () => q1.getLength() + q3.getLength() > q2.getLength() + q4.getLength()
   );
-  const b2 = new BlockingElement(
+  const b2 = new BlockingElement<BankClient>(
     'b2',
     () => q2.getLength() + q4.getLength() >= q1.getLength() + q3.getLength()
   );
-  const b3 = new BlockingElement(
+  const b3 = new BlockingElement<BankClient>(
     'b3',
     () => !(q4.getLength() === 0 && q1.getLength() - q2.getLength() >= 1)
   );
-  const b4 = new BlockingElement(
+  const b4 = new BlockingElement<BankClient>(
     'b4',
     () => !(q3.getLength() === 0 && q2.getLength() - q1.getLength() >= 1)
   );
 
-  const b5 = new BlockingElement('b5', () => q1.getLength() === 2);
-  const b6 = new BlockingElement('b6', () => q2.getLength() === 2);
+  const b5 = new BlockingElement<BankClient>('b5', () => q1.getLength() === 2);
+  const b6 = new BlockingElement<BankClient>('b6', () => q2.getLength() === 2);
 
   create.setNextElements([qStart]);
   qStart.setNextElements([b1, b2]);
@@ -114,6 +133,8 @@ const runTask2 = () => {
   b4.setNextElements([q3]);
   b6.setNextElements([q2]);
   q2.setNextElements([p2]);
+
+  const t = 1000;
 
   const model = new Model([
     create,
@@ -131,11 +152,46 @@ const runTask2 = () => {
     b5,
     b6,
   ]);
-  model.simulate(1000);
+  model.simulate(t);
+
+  console.log('\nTask results:');
+  console.log(`cashier 1 mean work time: ${p1.getTotalWorkTime() / t}`);
+  console.log(`cashier 2 mean work time: ${p2.getTotalWorkTime() / t}`);
+  console.log(
+    `mean clients in bank: ${
+      (q1.getMeanQueueLength() +
+        q2.getMeanQueueLength() +
+        q3.getMeanQueueLength() +
+        q4.getMeanQueueLength()) /
+      t
+    }`
+  );
+  console.log(
+    `mean output interval: ${
+      outputIntervals.reduce((acc, el) => acc + el, 0) / outputIntervals.length
+    }`
+  );
+  console.log(
+    `mean client time in bank: ${
+      meanGeneralProcessingIntervals.reduce((acc, el) => acc + el, 0) /
+      meanGeneralProcessingIntervals.length
+    }`
+  );
+  console.log(
+    `failure rate: ${
+      q3.getFailuresCount() / (q3.getQuantity() + q3.getFailuresCount()) +
+      q4.getFailuresCount() / (q4.getQuantity() + q4.getFailuresCount())
+    }`
+  );
+  console.log(`line change count: ${b3.getQuantity() + b4.getQuantity()}`);
 };
 
 const runTask3 = () => {
-  const create = new Create(15, () => {
+  let lastLabInputT = 0;
+  const labInputIntervals: number[] = [];
+  const processingIntervals: number[] = [];
+
+  const create = new Create(15, (t) => {
     const rand = Math.random();
     const type =
       rand < 0.5
@@ -144,7 +200,7 @@ const runTask3 = () => {
         ? PatientType.TWO
         : PatientType.THREE;
 
-    return new Patient(type);
+    return new Patient(type, t);
   });
   create.setDistribution(Distribution.EXPONENTIAL);
 
@@ -152,19 +208,52 @@ const runTask3 = () => {
     obj.type === PatientType.ONE ? 15 : obj.type === PatientType.TWO ? 40 : 30;
   const attendantDelayFunc = () => Math.random() * 5 + 3;
   const labTransferDelayFunc = () => Math.random() * 3 + 2;
-  const labRegisterDelayFunc = () => 4.5;
-  const labAssistantDelayFunc = () => 4;
+  const labRegisterDelayFunc = () => CustomRandom.generateErlang(4.5, 3);
+  const labAssistantDelayFunc = () => CustomRandom.generateErlang(4, 2);
+
+  const attendantProcessingFunc = (obj: Patient, t: number) => {
+    processingIntervals.push(t - obj.enterT);
+
+    return obj;
+  };
+  const labAssistantProcessingFunc = (obj: Patient, t: number) => {
+    if (obj.type === PatientType.THREE)
+      processingIntervals.push(t - obj.enterT);
+
+    return obj;
+  };
 
   const doctor1 = new Process<Patient>('doctor1[p]', doctorDelayFunc);
   const doctor2 = new Process<Patient>('doctor2[p]', doctorDelayFunc);
 
-  const attendant1 = new Process<Patient>('attendant1[p]', attendantDelayFunc);
-  const attendant2 = new Process<Patient>('attendant2[p]', attendantDelayFunc);
-  const attendant3 = new Process<Patient>('attendant3[p]', attendantDelayFunc);
+  const attendant1 = new Process<Patient>(
+    'attendant1[p]',
+    attendantDelayFunc,
+    attendantProcessingFunc
+  );
+  const attendant2 = new Process<Patient>(
+    'attendant2[p]',
+    attendantDelayFunc,
+    attendantProcessingFunc
+  );
+  const attendant3 = new Process<Patient>(
+    'attendant3[p]',
+    attendantDelayFunc,
+    attendantProcessingFunc
+  );
 
   const transferToLabProcess = new Process<Patient>(
     'transfer to lab[p]',
-    labTransferDelayFunc
+    labTransferDelayFunc,
+    (obj) => {
+      if (lastLabInputT)
+        labInputIntervals.push(
+          transferToLabProcess.getCurrentT() - lastLabInputT
+        );
+
+      lastLabInputT = transferToLabProcess.getCurrentT();
+      return obj;
+    }
   );
 
   const labRegister = new Process<Patient>(
@@ -174,11 +263,13 @@ const runTask3 = () => {
 
   const labAssistant1 = new Process<Patient>(
     'lab assistan1[p]',
-    labAssistantDelayFunc
+    labAssistantDelayFunc,
+    labAssistantProcessingFunc
   );
   const labAssistant2 = new Process<Patient>(
     'lab assistan2[p]',
-    labAssistantDelayFunc
+    labAssistantDelayFunc,
+    labAssistantProcessingFunc
   );
 
   const transferFromLabProcess = new Process<Patient>(
@@ -267,7 +358,21 @@ const runTask3 = () => {
     type13Block,
   ]);
 
-  model.simulate(1000);
+  model.simulate(10000);
+
+  console.log('\nTask results:');
+  console.log(
+    `Mean processing time: ${
+      processingIntervals.reduce((acc, el) => acc + el, 0) /
+      processingIntervals.length
+    }`
+  );
+  console.log(
+    `Mean lab input interval: ${
+      labInputIntervals.reduce((acc, el) => acc + el, 0) /
+      labInputIntervals.length
+    }`
+  );
 };
 
 // runTest();
