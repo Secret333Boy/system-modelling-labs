@@ -3,8 +3,6 @@ import cors from 'cors';
 import generateRandomOne from './generateRandomOne';
 import generateRandomTwo from './generateRandomTwo';
 import generateRandomThree from './generateRandomThree';
-import gauss from './gauss';
-import exponential from './exponential';
 import exponentialSegment from './exponentialSegment';
 
 const k = 100;
